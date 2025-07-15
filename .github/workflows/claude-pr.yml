@@ -5,11 +5,17 @@ on:
     types: [created]
   pull_request_review_comment:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      comment_body:
+        description: 'Comment body to simulate'
+        required: true
+        default: '@claude Create a simple package.json file with name "test-project" and express as dependency'
 
 jobs:
   claude-pr:
     runs-on: ubuntu-latest
-    if: contains(github.event.comment.body, '@claude')
+    if: contains(github.event.comment.body, '@claude') || github.event_name == 'workflow_dispatch'
     
     permissions:
       contents: write
@@ -40,8 +46,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Extract the comment body and issue/PR number
-          COMMENT_BODY="${{ github.event.comment.body }}"
-          ISSUE_NUMBER="${{ github.event.issue.number || github.event.pull_request.number }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            COMMENT_BODY="${{ github.event.inputs.comment_body }}"
+            ISSUE_NUMBER="2"
+          else
+            COMMENT_BODY="${{ github.event.comment.body }}"
+            ISSUE_NUMBER="${{ github.event.issue.number || github.event.pull_request.number }}"
+          fi
           
           # Remove @claude mention from the comment
           CLEANED_COMMENT=$(echo "$COMMENT_BODY" | sed 's/@claude//g' | xargs)
@@ -64,17 +75,34 @@ jobs:
             
             # Add and commit changes
             git add .
-            git commit -m "🤖 Claude Code changes
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              git commit -m "🤖 Claude Code changes
+
+Generated with Claude Code in response to: ${{ github.event.inputs.comment_body }}
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+            else
+              git commit -m "🤖 Claude Code changes
 
 Generated with Claude Code in response to: ${{ github.event.comment.body }}
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
+            fi
             
             # Push the branch
             git push origin "$BRANCH_NAME"
             
             # Create PR if this was triggered by an issue comment
-            if [ "${{ github.event.issue.number }}" != "" ]; then
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              gh pr create --title "Fix for issue #2" \
+                --body "This PR addresses the request in issue #2:
+
+${{ github.event.inputs.comment_body }}
+
+🤖 Generated with Claude Code" \
+                --head "$BRANCH_NAME" \
+                --base main
+            elif [ "${{ github.event.issue.number }}" != "" ]; then
               gh pr create --title "Fix for issue #${{ github.event.issue.number }}" \
                 --body "This PR addresses the request in issue #${{ github.event.issue.number }}:
 

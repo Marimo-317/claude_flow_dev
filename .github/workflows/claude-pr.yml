@@ -1,4 +1,4 @@
-name: Claude PR Action
+name: Claude PR Automation
 
 on:
   issue_comment:
@@ -34,15 +34,11 @@ jobs:
         run: |
           npm install -g @anthropic-ai/claude-code
 
-      - name: Test Claude Code OAuth Token
+      - name: Run Claude Code
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Test Claude Code CLI with OAuth token
-          echo "Testing Claude Code CLI with OAuth token..."
-          claude --version
-          
           # Extract the comment body and issue/PR number
           COMMENT_BODY="${{ github.event.comment.body }}"
           ISSUE_NUMBER="${{ github.event.issue.number || github.event.pull_request.number }}"
@@ -51,7 +47,7 @@ jobs:
           CLEANED_COMMENT=$(echo "$COMMENT_BODY" | sed 's/@claude//g' | xargs)
           
           # Run Claude Code with the cleaned comment
-          claude "$CLEANED_COMMENT"
+          claude-code "$CLEANED_COMMENT"
 
       - name: Create or update PR
         if: success()
@@ -68,7 +64,11 @@ jobs:
             
             # Add and commit changes
             git add .
-            git commit -m "🤖 Claude Code changes - Generated with Claude Code in response to: ${{ github.event.comment.body }} - Co-Authored-By: Claude <noreply@anthropic.com>"
+            git commit -m "🤖 Claude Code changes
+
+Generated with Claude Code in response to: ${{ github.event.comment.body }}
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
             
             # Push the branch
             git push origin "$BRANCH_NAME"
@@ -76,7 +76,11 @@ jobs:
             # Create PR if this was triggered by an issue comment
             if [ "${{ github.event.issue.number }}" != "" ]; then
               gh pr create --title "Fix for issue #${{ github.event.issue.number }}" \
-                --body "This PR addresses the request in issue #${{ github.event.issue.number }}: ${{ github.event.comment.body }} - 🤖 Generated with Claude Code" \
+                --body "This PR addresses the request in issue #${{ github.event.issue.number }}:
+
+${{ github.event.comment.body }}
+
+🤖 Generated with Claude Code" \
                 --head "$BRANCH_NAME" \
                 --base main
             fi

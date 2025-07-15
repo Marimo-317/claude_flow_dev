@@ -46,6 +46,10 @@ jobs:
           # Remove @claude mention from the comment
           CLEANED_COMMENT=$(echo "$COMMENT_BODY" | sed 's/@claude//g' | xargs)
           
+          # Debug: Check if API key is available
+          echo "API Key length: ${#ANTHROPIC_API_KEY}"
+          echo "API Key first 10 chars: ${ANTHROPIC_API_KEY:0:10}..."
+          
           # Run Claude Code with the cleaned comment
           claude "$CLEANED_COMMENT"
 

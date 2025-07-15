@@ -64,11 +64,7 @@ jobs:
             
             # Add and commit changes
             git add .
-            git commit -m "🤖 Claude Code changes
-
-Generated with Claude Code in response to: ${{ github.event.comment.body }}
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
+            git commit -m "🤖 Claude Code changes - Generated with Claude Code in response to: ${{ github.event.comment.body }} - Co-Authored-By: Claude <noreply@anthropic.com>"
             
             # Push the branch
             git push origin "$BRANCH_NAME"
@@ -76,11 +72,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
             # Create PR if this was triggered by an issue comment
             if [ "${{ github.event.issue.number }}" != "" ]; then
               gh pr create --title "Fix for issue #${{ github.event.issue.number }}" \
-                --body "This PR addresses the request in issue #${{ github.event.issue.number }}:
-
-${{ github.event.comment.body }}
-
-🤖 Generated with Claude Code" \
+                --body "This PR addresses the request in issue #${{ github.event.issue.number }}: ${{ github.event.comment.body }} - 🤖 Generated with Claude Code" \
                 --head "$BRANCH_NAME" \
                 --base main
             fi

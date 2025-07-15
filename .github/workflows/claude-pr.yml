@@ -47,7 +47,7 @@ jobs:
           CLEANED_COMMENT=$(echo "$COMMENT_BODY" | sed 's/@claude//g' | xargs)
           
           # Run Claude Code with the cleaned comment
-          claude-code "$CLEANED_COMMENT"
+          claude "$CLEANED_COMMENT"
 
       - name: Create or update PR
         if: success()

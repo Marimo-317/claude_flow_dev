@@ -34,21 +34,21 @@ jobs:
         run: |
           npm install -g @anthropic-ai/claude-code
 
-      - name: Run Claude Code
+      - name: Test Claude Code OAuth Token
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Test Claude Code CLI with OAuth token
+          echo "Testing Claude Code CLI with OAuth token..."
+          claude --version
+          
           # Extract the comment body and issue/PR number
           COMMENT_BODY="${{ github.event.comment.body }}"
           ISSUE_NUMBER="${{ github.event.issue.number || github.event.pull_request.number }}"
           
           # Remove @claude mention from the comment
           CLEANED_COMMENT=$(echo "$COMMENT_BODY" | sed 's/@claude//g' | xargs)
-          
-          # Debug: Check if API key is available
-          echo "API Key length: ${#ANTHROPIC_API_KEY}"
-          echo "API Key first 10 chars: ${ANTHROPIC_API_KEY:0:10}..."
           
           # Run Claude Code with the cleaned comment
           claude "$CLEANED_COMMENT"

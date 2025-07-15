@@ -1,0 +1,89 @@
+name: Claude PR Action
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  claude-pr:
+    runs-on: ubuntu-latest
+    if: contains(github.event.comment.body, '@claude')
+    
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      checks: write
+      actions: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code CLI
+        run: |
+          npm install -g @anthropic-ai/claude-code
+
+      - name: Run Claude Code
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extract the comment body and issue/PR number
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          ISSUE_NUMBER="${{ github.event.issue.number || github.event.pull_request.number }}"
+          
+          # Remove @claude mention from the comment
+          CLEANED_COMMENT=$(echo "$COMMENT_BODY" | sed 's/@claude//g' | xargs)
+          
+          # Run Claude Code with the cleaned comment
+          claude-code "$CLEANED_COMMENT"
+
+      - name: Create or update PR
+        if: success()
+        run: |
+          # Configure git
+          git config --global user.name "claude-bot"
+          git config --global user.email "claude-bot@anthropic.com"
+          
+          # Check if there are any changes
+          if [ -n "$(git status --porcelain)" ]; then
+            # Create a new branch for the changes
+            BRANCH_NAME="claude-fix-$(date +%s)"
+            git checkout -b "$BRANCH_NAME"
+            
+            # Add and commit changes
+            git add .
+            git commit -m "🤖 Claude Code changes
+
+Generated with Claude Code in response to: ${{ github.event.comment.body }}
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+            
+            # Push the branch
+            git push origin "$BRANCH_NAME"
+            
+            # Create PR if this was triggered by an issue comment
+            if [ "${{ github.event.issue.number }}" != "" ]; then
+              gh pr create --title "Fix for issue #${{ github.event.issue.number }}" \
+                --body "This PR addresses the request in issue #${{ github.event.issue.number }}:
+
+${{ github.event.comment.body }}
+
+🤖 Generated with Claude Code" \
+                --head "$BRANCH_NAME" \
+                --base main
+            fi
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
